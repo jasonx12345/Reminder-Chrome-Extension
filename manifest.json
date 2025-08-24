@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "To-Remind Lite (UI Only)",
+  "version": "0.2.0",
+  "description": "Quick reminder UI (no notifications yet).",
+  "permissions": ["storage"],
+  "action": { "default_popup": "popup.html", "default_title": "To-Remind" },
+  "icons": { "128": "icon128.png" }
+}
