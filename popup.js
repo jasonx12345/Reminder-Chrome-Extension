@@ -1,6 +1,6 @@
 'use strict';
 
-// UI-only build (no notifications)
+
 const STORAGE_KEY = 'reminders';
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -50,14 +50,30 @@ function fillSelect(sel, values, labels = values, selected){
     sel.appendChild(opt);
   });
 }
+function winkButton(btn, className, ms = 220){
+  return new Promise((resolve) => {
+    try {
+      btn.classList.add(className);
+      btn.style.pointerEvents = 'none';
+      btn.disabled = true;
+    } catch {}
+    setTimeout(() => {
+      try {
+        btn.classList.remove(className);
+        btn.style.pointerEvents = '';
+        btn.disabled = false;
+      } catch {}
+      resolve();
+    }, ms);
+  });
+}
+
 
 function buildMainDateControls(defaultDate){
   const ySel = $('#year'), mSel = $('#month'), dSel = $('#day');
   const minY = MIN_DATE.getFullYear(), maxY = MAX_DATE.getFullYear();
 
-  // years
-  const years = [];
-  for (let y=minY; y<=maxY; y++) years.push(y);
+  const years = []; for (let y=minY; y<=maxY; y++) years.push(y);
   fillSelect(ySel, years, years.map(String), defaultDate.getFullYear());
 
   function refreshMonths(selectedYear){
@@ -69,7 +85,6 @@ function buildMainDateControls(defaultDate){
     fillSelect(mSel, months, months.map(m => MONTH_NAMES[m]),
                Math.min(Math.max(defaultDate.getMonth(), startM), endM));
   }
-
   function refreshDays(selectedYear, selectedMonth){
     const isMin = (selectedYear===minY && selectedMonth===MIN_DATE.getMonth());
     const isMax = (selectedYear===maxY && selectedMonth===MAX_DATE.getMonth());
@@ -81,18 +96,10 @@ function buildMainDateControls(defaultDate){
     if (want > endD)   want = endD;
     fillSelect(dSel, days, days.map(String), want);
   }
-
   refreshMonths(defaultDate.getFullYear());
   refreshDays(defaultDate.getFullYear(), parseInt(mSel.value,10));
-
-  // keep ranges in sync
-  ySel.onchange = () => {
-    refreshMonths(parseInt(ySel.value,10));
-    refreshDays(parseInt(ySel.value,10), parseInt(mSel.value,10));
-  };
-  mSel.onchange = () => {
-    refreshDays(parseInt(ySel.value,10), parseInt(mSel.value,10));
-  };
+  ySel.onchange = () => { refreshMonths(parseInt(ySel.value,10)); refreshDays(parseInt(ySel.value,10), parseInt(mSel.value,10)); };
+  mSel.onchange = () => { refreshDays(parseInt(ySel.value,10), parseInt(mSel.value,10)); };
 }
 
 function getMainSelectedDate(){
@@ -111,15 +118,11 @@ function nextMinute(ts = Date.now()){
 function setDefaults(){
   const now = new Date();
   const in2h = new Date(now.getTime() + 2*60*60*1000);
-
-  // date within bounds
   let dd = new Date(in2h.getFullYear(), in2h.getMonth(), in2h.getDate());
   if (dd < MIN_DATE) dd = MIN_DATE;
   if (dd > MAX_DATE) dd = MAX_DATE;
 
   buildMainDateControls(dd);
-
-  // time
   $('#time').value = String(in2h.getHours()).padStart(2,'0') + ':' + String(in2h.getMinutes()).padStart(2,'0');
   $('#title').value = '';
 }
@@ -131,11 +134,16 @@ function toTsFromMain(){
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0).getTime();
 }
 
+
+function clearNotif(id){
+  try { chrome.notifications.clear(`reminder:${id}`); } catch {}
+}
+
 async function addReminder(){
   const title = $('#title').value.trim();
   if(!title){ flash('Title required'); return; }
 
-  // Future-only: if user picked a past date/time, bump to next minute and reflect in UI
+  // move past times into the future (next minute)
   let ts = toTsFromMain();
   const minTs = nextMinute().getTime();
   if (ts < minTs) {
@@ -146,7 +154,7 @@ async function addReminder(){
     ts = minTs;
   }
 
-  const r = { id: uid(), title, dueAt: ts, done:false, createdAt: Date.now(), updatedAt: Date.now() };
+  const r = { id: uid(), title, dueAt: ts, done:false, createdAt: Date.now(), updatedAt: Date.now(), notifiedAt: null };
   const list = await getAll();
   list.push(r); await saveAll(list);
   flash('Added');
@@ -157,8 +165,10 @@ async function addReminder(){
 async function toggleDone(id){
   const list = await getAll();
   const i = list.findIndex(x => x.id === id); if(i===-1) return;
-  list[i].done = !list[i].done; list[i].updatedAt = Date.now();
+  list[i].done = !list[i].done;
+  list[i].updatedAt = Date.now();
   await saveAll(list);
+  clearNotif(id);  // clear if there was a live notification
   render();
 }
 
@@ -167,10 +177,11 @@ async function del(id){
   const i = list.findIndex(x => x.id === id); if(i===-1) return;
   list.splice(i,1);
   await saveAll(list);
+  clearNotif(id);  // clear if there was a live notification
+  flash('Deleted');
   render();
 }
 
-/* ---------- Row edit helpers ---------- */
 async function startEdit(id){
   const row = document.querySelector(`[data-row="${id}"]`);
   if(!row) return;
@@ -223,17 +234,22 @@ async function saveEdit(id){
   let ts = new Date(y, m, d, hh, mm, 0, 0).getTime();
 
   const minTs = nextMinute().getTime();
-  if (ts < minTs) ts = minTs; // bump into the future silently
+  if (ts < minTs) ts = minTs; // bump future
 
   const list = await getAll();
   const i = list.findIndex(x => x.id === id); if(i===-1) return;
-  list[i].title = title; list[i].dueAt = ts; list[i].done = false; list[i].updatedAt = Date.now();
+  list[i].title = title;
+  list[i].dueAt = ts;
+  list[i].done = false;
+  list[i].notifiedAt = null;   // reset so background can notify again at the new time
+  list[i].updatedAt = Date.now();
   await saveAll(list);
+  clearNotif(id);
   flash('Updated');
   render();
 }
 
-/* ---------- Render ---------- */
+/* ---------- Render (unchanged) ---------- */
 async function render(){
   const list = (await getAll()).slice().sort((a,b)=>a.dueAt-b.dueAt);
   const now = new Date();
@@ -282,33 +298,27 @@ async function render(){
   }
 }
 
-/* ---------- Tiny helper to tint a button, wait, then act ---------- */
-function winkButton(btn, className, ms = 220){
-  return new Promise((res) => {
-    try {
-      btn.classList.add(className);
-      btn.style.pointerEvents = 'none';
-    } catch {}
-    setTimeout(res, ms);
-  });
-}
 
-/* ---------- Events (with flash on Done/Delete) ---------- */
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('#add, #clear, [data-act]');
   if(!t) return;
 
-  if (t.id === 'add')   return addReminder();
+  if (t.id === 'add') {
+   
+    await winkButton(t, 'flash-ok', 180);
+    return addReminder();
+  }
+
   if (t.id === 'clear') return setDefaults();
 
   if (t.dataset.act) {
     const id = t.dataset.id;
     if (t.dataset.act === 'toggleDone') {
-      await winkButton(t, 'flash-ok');
+      await winkButton(t, 'flash-ok');   // green wink
       return toggleDone(id);
     }
     if (t.dataset.act === 'del') {
-      await winkButton(t, 'flash-del');
+      await winkButton(t, 'flash-del');  // red wink
       return del(id);
     }
     if (t.dataset.act === 'edit')     return startEdit(id);
@@ -316,7 +326,7 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-// Enter in title = add
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target && e.target.id === 'title') addReminder();
 });

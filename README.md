@@ -1,6 +1,6 @@
 # To-Remind (Chrome Extension)
 
-Minimal Chrome extension for quick “to-remind” nudges. Add a title + future date/time,
+Minimal Chrome extension for quick “reminder” notifications. Add a title + future date/time,
 then mark Done or Delete. Custom date picker limits you to today → +2 years and prevents
 saving past times.
 
@@ -16,9 +16,13 @@ saving past times.
 2. Go to `chrome://extensions/` → enable **Developer mode**.
 3. Click **Load unpacked** → select the project folder.
 
+## Insta (Chrome WebStore)
+1. Search Remind Bot
+2. Download and use
+
 ## Usage
 1. Enter a **Title**, pick **Year/Month/Day** and **Time**.
 2. Click **Add reminder**.
 3. Use **Done** or **Delete** on items. (Done flashes green; Delete flashes red.)
 
-## Project Structure
+

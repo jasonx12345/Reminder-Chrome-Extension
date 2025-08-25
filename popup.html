@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>To-Remind — UI Only</title>
+  <title>Remind-Bot</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#cbd5e1; --text:#f8fafc; --accent:#22c55e; --warn:#f59e0b; --line:#374151; }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Roboto,Arial}
@@ -26,21 +26,20 @@
     .groupTitle{font-size:12px;color:var(--muted);margin:6px 0 2px}
     .actions{display:flex;gap:6px;flex-wrap:wrap}
     .editRow{display:none;margin-top:8px}
-    /* a bit wider; UI otherwise identical */
-    .wrap { width: 560px; }   /* try 540–580 if you want */
+    .wrap { width: 560px; }   
 
     /* keep the three date selects from squeezing */
     #year, #month, #day,
     .editYear, .editMonth, .editDay {
-      flex: 0 0 auto;   /* override .row>* { flex:1 } */
+      flex: 0 0 auto;   
       width: auto;
     }
 
     #year, .editYear   { min-width: 76px; }
-    #month, .editMonth { min-width: 100px; } /* fits longer month names */
+    #month, .editMonth { min-width: 100px; } 
     #day, .editDay     { min-width: 64px; }
 
-    /* smooth one-beat flash on action buttons */
+    
     button { transition: background-color .15s ease, color .15s ease; }
     .btn.flash-ok   { background: var(--accent) !important; color:#052e16 !important; }
     .btn.flash-del  { background: #ef4444 !important;      color:#450a0a !important; }
@@ -51,8 +50,8 @@
 <body>
   <div class="wrap">
     <h1>
-      To-Remind
-      <span class="badge">UI v0.3.0</span>
+      Remind-Bot
+      <span class="badge">Beta V1.0.0</span>
     </h1>
 
     <div class="card">

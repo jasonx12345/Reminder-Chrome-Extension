@@ -1,9 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "To-Remind Lite (UI Only)",
-  "version": "0.2.0",
-  "description": "Quick reminder UI (no notifications yet).",
-  "permissions": ["storage"],
-  "action": { "default_popup": "popup.html", "default_title": "To-Remind" },
-  "icons": { "128": "icon128.png" }
+  "name": "Remind-Bot",
+  "version": "0.4.0",
+  "description": "Quick reminders with future-only dates and a clean UI.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Remind-Bot"
+  },
+  "icons": {
+    "128": "icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "notifications",
+    "alarms"
+  ]
 }
